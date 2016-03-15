@@ -27,6 +27,8 @@
 *.i*86
 *.x86_64
 *.hex
+lab4
+program1
 
 # Debug files
 *.dSYM/
