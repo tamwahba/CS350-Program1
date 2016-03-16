@@ -4,6 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+//from https://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
+#define DEBUG 0
+#define debug_print(fmt, ...) \
+    do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
+
 typedef struct proc {
     int pid;
     int remaining;
@@ -265,34 +270,35 @@ int main(int argc, char* argv[])
 
     // I made this print statments to check the outputs
 
-    printf("processId: %i\n", processId);
-    printf("numProcesses: %i\n", numProcesses);
-    printf("mainAddress: %i\n", mainAddress);
-    printf("mainLocality: %i\n", mainLocality);
-    printf("rangeAddress: %i\n", rangeAddress);
-    printf("locality: %i\n", locality);
-    printf("memoryPressure: %i\n", memoryPressure);
+    debug_print("processId: %i\n", processId);
+    debug_print("numProcesses: %i\n", numProcesses);
+    debug_print("mainAddress: %i\n", mainAddress);
+    debug_print("mainLocality: %i\n", mainLocality);
+    debug_print("rangeAddress: %i\n", rangeAddress);
+    debug_print("locality: %i\n", locality);
+    debug_print("memoryPressure: %i\n", memoryPressure);
 
-    printf("seen_pid: %s\n", (seen_pid ? "true" : "false"));
-    printf("seen_n: %s\n", (seen_n ? "true" : "false"));
-    printf("seen_a: %s\n", (seen_a ? "true" : "false"));
-    printf("seen_m: %s\n", (seen_m ? "true" : "false"));
-    printf("seen_l: %s\n", (seen_l ? "true" : "false"));
+    debug_print("seen_pid: %s\n", (seen_pid ? "true" : "false"));
+    debug_print("seen_n: %s\n", (seen_n ? "true" : "false"));
+    debug_print("seen_a: %s\n", (seen_a ? "true" : "false"));
+    debug_print("seen_m: %s\n", (seen_m ? "true" : "false"));
+    debug_print("seen_l: %s\n", (seen_l ? "true" : "false"));
 
 
 
         
     process processes[numProcesses];
     int runningStart = 0;
-    // generate processes, put into processes array.
+    unsigned long totalRequests = 0;
+
+    //Generating focused process
     processes[0].pid = processId;
     processes[0].remaining = 1000;
     processes[0].start = runningStart++;
     processes[0].addressSize = mainAddress;
     processes[0].lastPage = 0;
 
-    unsigned long totalRequests = 0;
-
+    //Generating other processes
     for(int i = 1; i < numProcesses; i++) {
         processes[i].pid = i + processId;
         processes[i].remaining = (rand() % 10000) + 1000;
@@ -301,7 +307,6 @@ int main(int argc, char* argv[])
         else if(rangeAddress == 2) processes[i].addressSize = (rand() % 15) + 5;
         else processes[i].addressSize = (rand() % 30) + 20;
         processes[i].lastPage = 0;
-
         totalRequests += processes[i].remaining;
     }
 
