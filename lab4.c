@@ -283,7 +283,7 @@ int main(int argc, char* argv[])
 
         
     process processes[numProcesses];
-    int runningStart = 1;
+    int runningStart = 0;
     // generate processes, put into processes array.
     processes[0].pid = processId;
     processes[0].remaining = 1000;
@@ -322,13 +322,13 @@ int main(int argc, char* argv[])
         }
         
         int currentIdx = rand() % remainingProcesses;
-        process current = processes[currentIdx];
-        if (current.start < requests) {
+        process* current = &(processes[currentIdx]);
+        if (current->start > requests) {
             continue;
         } 
             
-        if (current.remaining == 0) {
-            printf("TERMINATE %i\n", current.pid);
+        if (current->remaining == 0) {
+            printf("TERMINATE %i\n", current->pid);
             for (int i = currentIdx; i < remainingProcesses; i++) {
                 processes[i] = processes[i + 1];
             }
@@ -343,16 +343,16 @@ int main(int argc, char* argv[])
         // from http://stackoverflow.com/questions/3771551/how-to-generate-a-boolean-with-p-probability-using-c-rand-function
         bool samePage = rand() < (samePageProb * ((double)RAND_MAX + 1.0));
         
-        int page = rand() % current.addressSize;
-        while (page == current.lastPage) { 
-            page = rand() % current.addressSize; 
+        int page = rand() % current->addressSize;
+        while (page == current->lastPage && current->addressSize > 1) { 
+            page = rand() % current->addressSize; 
         }
         
         printf("REFERENCE %i %i\n", 
-                current.pid, samePage ? current.lastPage : page);
-        current.lastPage = page;
-        current.remaining--;
-        requests++;
+                current->pid, samePage ? current->lastPage : page);
+        current->lastPage = page;
+        current->remaining--;
+        requests++; 
     }
 
     return 0;
