@@ -291,6 +291,8 @@ int main(int argc, char* argv[])
     processes[0].addressSize = mainAddress;
     processes[0].lastPage = 0;
 
+    unsigned long totalRequests = 0;
+
     for(int i = 1; i < numProcesses; i++) {
         processes[i].pid = i + processId;
         processes[i].remaining = (rand() % 10000) + 1000;
@@ -299,6 +301,8 @@ int main(int argc, char* argv[])
         else if(rangeAddress == 2) processes[i].addressSize = (rand() % 15) + 5;
         else processes[i].addressSize = (rand() % 30) + 20;
         processes[i].lastPage = 0;
+
+        totalRequests += processes[i].remaining;
     }
 
 
@@ -306,6 +310,50 @@ int main(int argc, char* argv[])
     // randomly select processes for memory access, decrementing remaining
     // counter in process. Delete process from processes array and print exit when
     // counter reaches 0.
+    int requests = 0;
+    int remainingProcesses = numProcesses;
+    while (remainingProcesses > 0) {
+        for (int i = 0; i < remainingProcesses; i++) {
+            if (processes[i].start == requests) {
+                printf("START %i %i\n", 
+                        processes[i].pid, processes[i].addressSize);
+            break;
+            }
+        }
+        
+        int currentIdx = rand() % remainingProcesses;
+        process current = processes[currentIdx];
+        if (current.start < requests) {
+            continue;
+        } 
+            
+        if (current.remaining == 0) {
+            printf("TERMINATE %i\n", current.pid);
+            for (int i = currentIdx; i < remainingProcesses; i++) {
+                processes[i] = processes[i + 1];
+            }
+            remainingProcesses--;
+            continue;
+        }
+        
+        double samePageProb;
+        if (locality == 1) { samePageProb = 0.4; }
+        else if (locality == 2) {samePageProb = 0.7; }
+        else { samePageProb = 0.9; }
+        // from http://stackoverflow.com/questions/3771551/how-to-generate-a-boolean-with-p-probability-using-c-rand-function
+        bool samePage = rand() < (samePageProb * ((double)RAND_MAX + 1.0));
+        
+        int page = rand() % current.addressSize;
+        while (page == current.lastPage) { 
+            page = rand() % current.addressSize; 
+        }
+        
+        printf("REFERENCE %i %i\n", 
+                current.pid, samePage ? current.lastPage : page);
+        current.lastPage = page;
+        current.remaining--;
+        requests++;
+    }
 
     return 0;
 }
