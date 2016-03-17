@@ -23,9 +23,14 @@ input parameters
     - `3` highly localized 90% same page twice in a row
 
 # Lab 5
-Read input from lab4 program and detect page faults
+Read input from lab4 program and detect page faults when memory is full
+and clear frames used by process when it terminates.
 
 input parameters
 - `pid <int>` processes id to focus on for testing for testing (we are testing this process relative to all other processes in input)
+- `s <int>` memory size in pages
 
 Output overall page fault rate for provided process and overall page fault rate
+
+# Program 1
+Implementing the page replacement mechanisms
