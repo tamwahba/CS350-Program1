@@ -18,9 +18,9 @@ input parameters
     - `2` medium
     - `3` high
 - `l <1|2|3>` locality of reference
-    - `1` sparse
-    - `2` medium
-    - `3` highly localized
+    - `1` sparse 40% same page twice in a row
+    - `2` medium 70% same page twice in a row
+    - `3` highly localized 90% same page twice in a row
 
 # Lab 5
 Read input from lab4 program and detect page faults

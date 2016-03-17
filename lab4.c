@@ -15,8 +15,6 @@ typedef struct proc {
     int start;
     int addressSize;
     int lastPage;
-    // use this to request same page witha certain probability
-    // depending on locality of reference. 1 - 40%, 2 - 70%, 3 - 90%
 } process;
 
 
