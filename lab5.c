@@ -13,6 +13,7 @@ typedef struct m {
     bool* frameIsEmpty; // contains whether the frame is empty
 } memory;
 
+
 enum operation {
     START,
     REFERENCE,
@@ -21,20 +22,18 @@ enum operation {
 
 // checks if page is in memory
 bool is_in_memory(memory m, int pid, int pageNumber) {
-
-  return 0;
-
+  //return 0;
 }
 
 // checks if there is any free memory available
 bool has_free_memory(memory m) {
     return m.freeFramesCount > 0;
-
 }
 
 void remove_frames_for_process(memory* m, int pid) {
 
 }
+
 
 void add_page_to_memory(memory* m, int pid, int page) {
 
@@ -148,7 +147,5 @@ int main(int argc, char* argv[]) {
                 // totalPageFaultCount++;
     //  if terminate
     //      remove frames from memory
-
-
     return 0;
 }
