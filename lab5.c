@@ -9,7 +9,7 @@
 typedef struct m {
     int freeFramesCount;
     unsigned long* frame; // contains the id of the process and the page using that frame.
-    // I make it as an array and easy entry has two things ( pid and page number)
+    // I make it as an array and each entry has two things ( pid and page number)
     bool* frameIsEmpty; // contains whether the frame is empty
 } memory;
 
