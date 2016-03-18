@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
           addressSpaceSize = arg2;
 
           ///Here START command 
-          ///TODO: remove scaffolding
+          /// just debugs
           fprintf(stdout, "START, pid: %d, addressSpaceSize: %d\n", pid, addressSpaceSize);
 
         } else if (strcmp(opstr, "TERMINATE") == 0) {
@@ -118,16 +118,16 @@ int main(int argc, char* argv[]) {
           pid = arg1;
 
 
-          ///TODO: do whatever the TERMINATE command does
-          ///TODO: remove scaffolding
+          ///Here Terminals command 
+          /// just debugs
           fprintf(stdout, "TERMINATE, pid: %d\n", pid);
         } else if (strcmp(opstr, "REFERENCE") == 0) {
           op = REFERENCE;
           pid = arg1;
           pageNumber = arg2;
 
-          ///TODO: do whatever the REFERENCE command does
-          ///TODO: remove scaffolding
+          ///Here Reerence command 
+          /// just debugs
           fprintf(stdout, "REFERENCE, pid: %d, page: %d\n", pid, pageNumber);
 
 
