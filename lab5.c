@@ -22,7 +22,11 @@ enum operation {
 
 // checks if page is in memory
 bool is_in_memory(memory m, int pid, int pageNumber) {
-  //return 0;
+    for(int i = 0; i < FRAME_COUNT; i++) {
+        if(pid == (m.frame[i] >> 16) && pageNumber == (m.frame[i] & 0xffff))
+            return m.frameIsEmpty[i];
+    }
+    return false;
 }
 
 // checks if there is any free memory available
@@ -37,36 +41,36 @@ void remove_frames_for_process(memory* m, int pid) {
 
 void add_page_to_memory(memory* m, int pid, int page) {
 
-  for (size_t frame = 0; frame < FRAME_COUNT; ++frame)
-  {
-    ///I put the pid AND the page number into the frames array
-    ///So, each frame takes up two slots
-    ///for example [pid, page, pid, page, pid, page]
-    ///The reason that I cannot do it like key and value because the key is frame number
-    // and the value will be (pid ,  page number ) -> this is not working at all
-    /// this is the array of the frame | frame 1| |frame 2|  |frame 3 |
-
-    //int frame_pid = m->frame[frame*2];
-    //int frame_page = m->frame[(frame*2)+1];
-
-    bool is_this_frame_free = m->frameIsEmpty[frame];
-
-    if (is_this_frame_free)
+    for (size_t frame = 0; frame < FRAME_COUNT; ++frame)
     {
-        ///fill this frame slot
+        ///I put the pid AND the page number into the frames array
+        ///So, each frame takes up two slots
+        ///for example [pid, page, pid, page, pid, page]
+        ///The reason that I cannot do it like key and value because the key is frame number
+        // and the value will be (pid ,  page number ) -> this is not working at all
+        /// this is the array of the frame | frame 1| |frame 2|  |frame 3 |
 
-        ///set the pid
-        m->frame[frame*2] = pid;
-        ///set the page
-        m->frame[(frame*2)+1] = page;
+        //int frame_pid = m->frame[frame*2];
+        //int frame_page = m->frame[(frame*2)+1];
 
-        ///mark the frame as full
-        m->frameIsEmpty[frame] = false;
+        bool is_this_frame_free = m->frameIsEmpty[frame];
 
-        m->freeFramesCount--;
-        return;
+        if (is_this_frame_free)
+        {
+            ///fill this frame slot
+
+            ///set the pid
+            m->frame[frame*2] = pid;
+            ///set the page
+            m->frame[(frame*2)+1] = page;
+
+            ///mark the frame as full
+            m->frameIsEmpty[frame] = false;
+
+            m->freeFramesCount--;
+            return;
+        }
     }
-  }
 }
 
 int main(int argc, char* argv[]) {
@@ -78,6 +82,7 @@ int main(int argc, char* argv[]) {
     // read parameters
 
     // initialize memory
+    memory m;
 
     // read input from stdin
     enum operation op;
@@ -90,62 +95,73 @@ int main(int argc, char* argv[]) {
 
     while (true)
     {
-      char opstr[10]; // each word at most 10 characters 
-      int arg1 = 0, arg2 = 0;
-      int num_args = fscanf(stdin, "%9s %d %d\n", opstr, &arg1, &arg2);
+        char opstr[10]; // each word at most 10 characters 
+        int arg1 = 0, arg2 = 0;
+        int num_args = fscanf(stdin, "%9s %d %d\n", opstr, &arg1, &arg2);
 
-      if (num_args == EOF)
-        break;
+        if (num_args == EOF)
+            break;
 
-      ///not parse because it's empty
-      if (num_args == 0)
-        ///skip
-        continue;
+        ///not parse because it's empty
+        if (num_args == 0)
+            ///skip
+            continue;
 
         if (strcmp(opstr, "START") == 0)
         {
-          op = START;
-          pid = arg1;
-          addressSpaceSize = arg2;
+            op = START;
+            pid = arg1;
+            addressSpaceSize = arg2;
 
-          ///Here START command 
-          /// just debugs
-          fprintf(stdout, "START, pid: %d, addressSpaceSize: %d\n", pid, addressSpaceSize);
+            ///Here START command 
+            /// just debugs
+            fprintf(stdout, "START, pid: %d, addressSpaceSize: %d\n", pid, addressSpaceSize);
 
         } else if (strcmp(opstr, "TERMINATE") == 0) {
-          op = TERMINATE;
-          pid = arg1;
+            op = TERMINATE;
+            pid = arg1;
 
 
-          ///Here Terminals command 
-          /// just debugs
-          fprintf(stdout, "TERMINATE, pid: %d\n", pid);
+            ///Here Terminals command 
+            /// just debugs
+            fprintf(stdout, "TERMINATE, pid: %d\n", pid);
         } else if (strcmp(opstr, "REFERENCE") == 0) {
-          op = REFERENCE;
-          pid = arg1;
-          pageNumber = arg2;
+            op = REFERENCE;
+            pid = arg1;
+            pageNumber = arg2;
 
-          ///Here Reerence command 
-          /// just debugs
-          fprintf(stdout, "REFERENCE, pid: %d, page: %d\n", pid, pageNumber);
+            ///Here Reerence command 
+            /// just debugs
+            fprintf(stdout, "REFERENCE, pid: %d, page: %d\n", pid, pageNumber);
 
 
         } else {
-          fprintf(stderr, "Invalid command\n%9s", opstr);
+            fprintf(stderr, "Invalid command\n%9s", opstr);
+        }
+
+        switch(op) {
+            case START:
+                //create page table
+                break;
+
+            case REFERENCE:
+                if(!is_in_memory(m, pid, pageNumber)) {
+                    if(has_free_memory(m)) {
+                        add_page_to_memory(&m, pid, pageNumber);
+                    } else { 
+                        if(1/*Focused process*/) processPageFaultCount++;
+                        totalPageFaultCount++;
+                    }
+                }
+                if(1/*Focused process*/) processReferences++;
+                totalReferences++;
+                break;
+
+            case TERMINATE:
+                remove_frames_for_process(&m, pid);
+                break;
         }
     }
 
-    // if start create page tabel
-    // if reference
-    //  check if page is not in memory
-      // if (!is_in_memory()) {
-      // }
-    //      check if has free memory
-    //          add page to memory
-    //      else
-    //          increment page fault counter
-                // totalPageFaultCount++;
-    //  if terminate
-    //      remove frames from memory
     return 0;
 }
