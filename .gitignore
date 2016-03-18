@@ -28,6 +28,7 @@
 *.x86_64
 *.hex
 lab4
+lab5
 program1
 
 # Debug files

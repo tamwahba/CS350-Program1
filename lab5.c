@@ -1,12 +1,12 @@
+#include <getopt.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#define FRAME_COUNT 100
-
-
 typedef struct m {
+    int totalFramesCount;
     int freeFramesCount;
     unsigned long* frame; // contains the id of the process and the page using that frame.
     // I make it as an array and each entry has two things ( pid and page number)
@@ -22,9 +22,9 @@ enum operation {
 
 // checks if page is in memory
 bool is_in_memory(memory m, int pid, int pageNumber) {
-    for(int i = 0; i < FRAME_COUNT; i++) {
+    for(int i = 0; i < m.totalFramesCount; i++) {
         if(pid == (m.frame[i] >> 16) && pageNumber == (m.frame[i] & 0xffff))
-            return m.frameIsEmpty[i];
+            return true;
     }
     return false;
 }
@@ -35,13 +35,18 @@ bool has_free_memory(memory m) {
 }
 
 void remove_frames_for_process(memory* m, int pid) {
-
+    for(int i = 0; i < m->totalFramesCount; i++) {
+        if(pid == (m->frame[i] >> 16)) {
+            m->frameIsEmpty[i] = true;
+            m->freeFramesCount++;
+        }
+    }
 }
 
 
 void add_page_to_memory(memory* m, int pid, int page) {
 
-    for (size_t frame = 0; frame < FRAME_COUNT; ++frame)
+    for (size_t frame = 0; frame < m->totalFramesCount; ++frame)
     {
         ///I put the pid AND the page number into the frames array
         ///So, each frame takes up two slots
@@ -58,11 +63,11 @@ void add_page_to_memory(memory* m, int pid, int page) {
         if (is_this_frame_free)
         {
             ///fill this frame slot
+            unsigned long val = 0;
+            val = (val | pid) << 16;
+            val = val | page;
 
-            ///set the pid
-            m->frame[frame*2] = pid;
-            ///set the page
-            m->frame[(frame*2)+1] = page;
+            m->frame[frame] = val;
 
             ///mark the frame as full
             m->frameIsEmpty[frame] = false;
@@ -74,15 +79,57 @@ void add_page_to_memory(memory* m, int pid, int page) {
 }
 
 int main(int argc, char* argv[]) {
+    int process;
+    int memSize;
     int totalReferences = 0;
     int totalPageFaultCount = 0;
     int processReferences = 0;
     int processPageFaultCount = 0;
 
+    char opt;
     // read parameters
+    while ((opt = getopt(argc, argv, "p:s:")) != -1) {
+        switch(opt) {
+            case 'p':
+                if (!sscanf(optarg, "%i", &process)) {
+                    fprintf(stderr, "Invalid process id option.\n");
+                    exit(1);
+                }
+                break;
+            case 's':
+                if (!sscanf(optarg, "%i", &memSize)) {
+                    fprintf(stderr, "Invalid memory size option.\n");
+                    exit(1);
+                }
+                break;
+            case '?':
+                fprintf(stderr, "Unrecognized option -%c.\n", optopt);
+                exit(1);
+                break;
+            case ':':
+                fprintf(stderr, "The -%c option is missing an argument.\n",
+                        optopt);
+                exit(1);
+                break;
+            default:
+                break;
+        }
+    }
+    if (optind != 5) {
+        fprintf(stderr, "Missing required arguments.\n");
+        exit(1);
+    }
 
+    
     // initialize memory
     memory m;
+    m.totalFramesCount = memSize;
+    m.freeFramesCount = memSize;
+    m.frame = malloc(sizeof(unsigned long) * memSize);
+    m.frameIsEmpty = malloc(sizeof(bool) * memSize);
+    for (int i = 0; i < memSize; i++) {
+        m.frameIsEmpty[i] = true;
+    }
 
     // read input from stdin
     enum operation op;
@@ -149,11 +196,12 @@ int main(int argc, char* argv[]) {
                     if(has_free_memory(m)) {
                         add_page_to_memory(&m, pid, pageNumber);
                     } else { 
-                        if(1/*Focused process*/) processPageFaultCount++;
+                        if(pid == process) processPageFaultCount++;
                         totalPageFaultCount++;
+                        fprintf(stdout, "pf\n");
                     }
                 }
-                if(1/*Focused process*/) processReferences++;
+                if(pid == process) processReferences++;
                 totalReferences++;
                 break;
 
@@ -162,6 +210,12 @@ int main(int argc, char* argv[]) {
                 break;
         }
     }
+
+    free(m.frame);
+    free(m.frameIsEmpty);
+
+    fprintf(stdout, "Total page faults: %i.\nProcess page faults: %i.\n",
+            totalPageFaultCount, processPageFaultCount);
 
     return 0;
 }
