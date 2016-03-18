@@ -15,6 +15,7 @@ typedef struct proc {
     int start;
     int addressSize;
     int lastPage;
+    bool started;
 } process;
 
 
@@ -317,10 +318,11 @@ int main(int argc, char* argv[])
     int remainingProcesses = numProcesses;
     while (remainingProcesses > 0) {
         for (int i = 0; i < remainingProcesses; i++) {
-            if (processes[i].start == requests) {
+            if (!processes[i].started && processes[i].start == requests) {
                 printf("START %i %i\n", 
                         processes[i].pid, processes[i].addressSize);
-            break;
+                processes[i].started = true;
+                break;
             }
         }
         
