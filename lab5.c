@@ -215,6 +215,9 @@ int main(int argc, char* argv[]) {
 
     fprintf(stdout, "Total page faults: %i.\nProcess page faults: %i.\n",
             totalPageFaultCount, processPageFaultCount);
+    fprintf(stdout, "Total page fault rate: %f.\nProcess page fault rate: %f.\n",
+            (totalPageFaultCount * 1.0) / totalReferences, 
+            (processPageFaultCount * 1.0) / processReferences);
 
     return 0;
 }
