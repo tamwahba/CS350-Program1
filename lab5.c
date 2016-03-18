@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
 
             ///Here START command 
             /// just debugs
-            fprintf(stdout, "START, pid: %d, addressSpaceSize: %d\n", pid, addressSpaceSize);
+            // fprintf(stdout, "START, pid: %d, addressSpaceSize: %d\n", pid, addressSpaceSize);
 
         } else if (strcmp(opstr, "TERMINATE") == 0) {
             op = TERMINATE;
@@ -171,7 +171,7 @@ int main(int argc, char* argv[]) {
 
             ///Here Terminals command 
             /// just debugs
-            fprintf(stdout, "TERMINATE, pid: %d\n", pid);
+            // fprintf(stdout, "TERMINATE, pid: %d\n", pid);
         } else if (strcmp(opstr, "REFERENCE") == 0) {
             op = REFERENCE;
             pid = arg1;
@@ -179,7 +179,7 @@ int main(int argc, char* argv[]) {
 
             ///Here Reerence command 
             /// just debugs
-            fprintf(stdout, "REFERENCE, pid: %d, page: %d\n", pid, pageNumber);
+            // fprintf(stdout, "REFERENCE, pid: %d, page: %d\n", pid, pageNumber);
 
 
         } else {
@@ -198,7 +198,6 @@ int main(int argc, char* argv[]) {
                     } else { 
                         if(pid == process) processPageFaultCount++;
                         totalPageFaultCount++;
-                        fprintf(stdout, "pf\n");
                     }
                 }
                 if(pid == process) processReferences++;
