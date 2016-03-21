@@ -24,13 +24,14 @@ void print_usage(FILE* out)
 
 
     fprintf(out, "Usage:\n\n");
-    fprintf(out, "program1 -h -pid <PID A L> -n <N> -a <1|2|3> -m <1|2|3> -l <1|2|3>\n");
+    fprintf(out, "program1 -h -pid <PID A M L> -n <N> -a <1|2|3> -m <1|2|3> -l <1|2|3>\n");
     fprintf(out, "\n");
     fprintf(out, "-h      Print this help\n");
     fprintf(out, "\n");
     fprintf(out, "-pid    Main process specs\n");
     fprintf(out, " PID   Process ID for the main process\n");
     fprintf(out, " A     Address space size for the main process, measured in the number of pages\n");
+    fprintf(out, " M    Average number of memory accesses\n");
     fprintf(out, " L     Locality of reference for the main process, measured in 1,2,3 for sparse, medium, highly localized (see below)\n");
     fprintf(out, "\n");
     fprintf(out, "-n      This option specifies number of additional processes\n");
@@ -41,10 +42,10 @@ void print_usage(FILE* out)
     fprintf(out, " 2     Medium (5-20 pages)\n");
     fprintf(out, " 3     Large (20-50 pages)\n");
     fprintf(out, "\n");
-    fprintf(out, "-m      Memory pressure for the additional processes\n");
-    fprintf(out, " 1     Little\n");
-    fprintf(out, " 2     Medium\n");
-    fprintf(out, " 3     High\n");
+    fprintf(out, "-m      Average number of memory accesses\n");
+    fprintf(out, " 1     Small (1000 - 5000)\n");
+    fprintf(out, " 2     Medium (5000 - 10000)\n");
+    fprintf(out, " 3     Large (10000 - 25000)\n");
     fprintf(out, "\n");
     fprintf(out, "-l      Locality of reference for the additional processes\n");
     fprintf(out, " 1     Sparse\n");
@@ -67,10 +68,8 @@ int main(int argc, char* argv[])
     ///A, L
     int rangeAddress = 2, locality = 2;
 
-
-
-    ///NOTE: I had to add this variable.
-    int memoryPressure = 2;
+    int memoryAccesses = 2;
+    int mainMemory = 0;
 
     // read input and check bounds for parameters
 
@@ -113,7 +112,9 @@ int main(int argc, char* argv[])
 
             mainAddress = atoi(argv[arg_index + 2]);
 
-            mainLocality = atoi(argv[arg_index + 3]);
+            mainMemory = atoi(argv[arg_index + 3]);
+            
+            mainLocality = atoi(argv[arg_index + 4]);
 
             if (mainLocality < 1 || mainLocality > 3)
             {
@@ -124,7 +125,7 @@ int main(int argc, char* argv[])
                 print_usage(stderr);
                 exit(-1);
             }
-            arg_index += 3;
+            arg_index += 4;
             seen_pid = true;
         } else if (strcmp(arg, "-n") == 0) {
             ///reading the `n` argument
@@ -209,11 +210,11 @@ int main(int argc, char* argv[])
                 exit(-1);
             }
 
-            memoryPressure = atoi(argv[arg_index + 1]);
+            memoryAccesses = atoi(argv[arg_index + 1]);
 
-            if (memoryPressure < 1 || memoryPressure > 3)
+            if (memoryAccesses < 1 || memoryAccesses > 3)
             {
-                fprintf(stderr, "Error: invalid value for -m (%i), should be in range [1,3]\n\n", memoryPressure);
+                fprintf(stderr, "Error: invalid value for -m (%i), should be in range [1,3]\n\n", memoryAccesses);
 
                 ///have something like:
                 ///./program1 -m 4
@@ -275,7 +276,7 @@ int main(int argc, char* argv[])
     debug_print("mainLocality: %i\n", mainLocality);
     debug_print("rangeAddress: %i\n", rangeAddress);
     debug_print("locality: %i\n", locality);
-    debug_print("memoryPressure: %i\n", memoryPressure);
+    debug_print("memoryAccesses: %i\n", memoryAccesses);
 
     debug_print("seen_pid: %s\n", (seen_pid ? "true" : "false"));
     debug_print("seen_n: %s\n", (seen_n ? "true" : "false"));
@@ -292,7 +293,9 @@ int main(int argc, char* argv[])
 
     //Generating focused process
     processes[0].pid = processId;
-    processes[0].remaining = 1000;
+    if(mainMemory == 1) processes[0].remaining = (rand() % 4000) + 1000;
+    else if(mainMemory == 2) processes[0].remaining = (rand() % 5000) + 5000;
+    else processes[0].remaining = (rand() % 15000) + 10000;
     processes[0].start = runningStart++;
     processes[0].addressSize = mainAddress;
     processes[0].lastPage = 0;
@@ -300,6 +303,9 @@ int main(int argc, char* argv[])
     //Generating other processes
     for(int i = 1; i < numProcesses; i++) {
         processes[i].pid = i + processId;
+        if(memoryAccesses == 1) processes[i].remaining = (rand() % 4000) + 1000;
+        else if(memoryAccesses == 2) processes[i].remaining = (rand() % 5000) + 5000;
+        else processes[i].remaining = (rand() % 15000) + 10000;
         processes[i].remaining = (rand() % 10000) + 1000;
         processes[i].start = runningStart++;
         if(rangeAddress == 1) processes[i].addressSize = (rand() % 5) + 1;
@@ -307,6 +313,7 @@ int main(int argc, char* argv[])
         else processes[i].addressSize = (rand() % 30) + 20;
         processes[i].lastPage = 0;
         totalRequests += processes[i].remaining;
+        debug_print("memory accesses: %d\n", memoryAccesses);
     }
 
 

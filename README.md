@@ -4,19 +4,20 @@
 Generate list of memeory references simulating a number of running processes
 
 input parameters
-- `pid <int a l>` main process id (process we are testing)
+- `pid <int a m l>` main process id (process we are testing)
     - `int` process id
     - `a` int specifying address space size in pages
-    - `l` <1|2|3> for locality of reference (see blow)
+    - `m <1|2|3>` average number of memory references (see below)
+    - `l` <1|2|3> for locality of reference (see below)
 - `n` 1 to 200 number of different processes
 - `a <1|2|3>` average address space size of processes
     - `1` small (1-5 pages)
     - `2` medium (5-20 pages)
     - `3` large (20-50 pafes)
-- `m <1|2|3>` memory pressure
-    - `1` little
-    - `2` medium
-    - `3` high
+- `m <1|2|3>` average number of memory references
+    - `1` small (500 - 2000)
+    - `2` medium (2000 - 5000)
+    - `3` large (5000 - 10000)
 - `l <1|2|3>` locality of reference
     - `1` sparse 40% same page twice in a row
     - `2` medium 70% same page twice in a row
