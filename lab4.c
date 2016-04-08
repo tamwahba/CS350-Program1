@@ -5,7 +5,7 @@
 #include <string.h>
 
 //from https://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
-#define DEBUG 0
+#define DEBUG 0 
 #define debug_print(fmt, ...) \
     do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
 
@@ -15,6 +15,7 @@ typedef struct proc {
     int start;
     int addressSize;
     int lastPage;
+    int locality;
     bool started;
 } process;
 
@@ -24,14 +25,14 @@ void print_usage(FILE* out)
 
 
     fprintf(out, "Usage:\n\n");
-    fprintf(out, "program1 -h -pid <PID A M L> -n <N> -a <1|2|3> -m <1|2|3> -l <1|2|3>\n");
+    fprintf(out, "program1 -h -pid <PID A M L> -n <N> -a <1|2|3> -m <1|2|3> -l <1|2|3> -p <1|2|3>\n");
     fprintf(out, "\n");
     fprintf(out, "-h      Print this help\n");
     fprintf(out, "\n");
     fprintf(out, "-pid    Main process specs\n");
     fprintf(out, " PID   Process ID for the main process\n");
     fprintf(out, " A     Address space size for the main process, measured in the number of pages\n");
-    fprintf(out, " M    Average number of memory accesses\n");
+    fprintf(out, " M     Average number of memory accesses\n");
     fprintf(out, " L     Locality of reference for the main process, measured in 1,2,3 for sparse, medium, highly localized (see below)\n");
     fprintf(out, "\n");
     fprintf(out, "-n      This option specifies number of additional processes\n");
@@ -51,6 +52,11 @@ void print_usage(FILE* out)
     fprintf(out, " 1     Sparse\n");
     fprintf(out, " 2     Medium\n");
     fprintf(out, " 3     Highly Localized\n");
+    fprintf(out, "\n");
+    fprintf(out, "-l      Likely hood of a process changing phases\n");
+    fprintf(out, " 1     Low (10%% chance)\n");
+    fprintf(out, " 2     Medium (50%% chance)\n");
+    fprintf(out, " 3     Highly (80%% chance)\n");
 }
 
 int main(int argc, char* argv[]) 
@@ -64,9 +70,9 @@ int main(int argc, char* argv[])
     ///N
     int numProcesses = 1;
     ///pid.A, pid.L
-    int mainAddress = 4, mainLocality = 2;
+    int mainAddress = 4, mainLocality = 2, mainPhases = 2;
     ///A, L
-    int rangeAddress = 2, locality = 2;
+    int rangeAddress = 2, locality = 2, phases = 2;
 
     int memoryAccesses = 2;
     int mainMemory = 0;
@@ -78,12 +84,11 @@ int main(int argc, char* argv[])
     bool seen_a = false;
     bool seen_m = false;
     bool seen_l = false;
-
+    bool seen_p = false;
 
     for (int arg_index = 1; arg_index < argc; ++arg_index)
     {
          char* arg = argv[arg_index];
-
 
         if (strcmp(arg, "-h") == 0)
         {
@@ -100,8 +105,8 @@ int main(int argc, char* argv[])
                 exit(-1);
             }
 
-            ///need to make sure there are 3 additional arguments, elsewise it is a usage error.
-            if (!(arg_index + 3 < argc))
+            ///need to make sure there are 5 additional arguments, elsewise it is a usage error.
+            if (!(arg_index + 5 < argc))
             {
                 print_usage(stderr);
                 exit(-1);
@@ -116,6 +121,8 @@ int main(int argc, char* argv[])
             
             mainLocality = atoi(argv[arg_index + 4]);
 
+            mainPhases = atoi(argv[arg_index + 5]);
+            
             if (mainLocality < 1 || mainLocality > 3)
             {
                 fprintf(stderr, "Error: invalid value for -pid, l=%i, should be in range [1,3]\n\n", mainLocality);
@@ -125,7 +132,15 @@ int main(int argc, char* argv[])
                 print_usage(stderr);
                 exit(-1);
             }
-            arg_index += 4;
+            
+            if (mainPhases < 1 || mainPhases > 3)
+            {
+                fprintf(stderr, "Error: invalid value for -pid, p=%i, should be in range [1,3]\n\n", mainPhases);
+                print_usage(stderr);
+                exit(-1);
+            }
+
+            arg_index += 5;
             seen_pid = true;
         } else if (strcmp(arg, "-n") == 0) {
             ///reading the `n` argument
@@ -224,6 +239,31 @@ int main(int argc, char* argv[])
 
             arg_index += 1;
             seen_m = true;
+        } else if (strcmp(arg, "-p") == 0) {
+            ///reading the `p` argument
+
+            if (seen_p)
+            {
+                print_usage(stderr);
+                exit(-1);
+            }
+            if (!(arg_index + 1 < argc))
+            {
+                print_usage(stderr);
+                exit(-1);
+            }
+
+            phases = atoi(argv[arg_index + 1]);
+
+            if (phases < 1 || phases > 3)
+            {
+                fprintf(stderr, "Error: invalid value for -p (%i), should be in range [1,3]\n\n", locality);
+
+                print_usage(stderr);
+                exit(-1);
+            }
+            arg_index += 1;
+            seen_p = true;
         } else if (strcmp(arg, "-l") == 0) {
             ///reading the `l` argument
 
@@ -274,8 +314,10 @@ int main(int argc, char* argv[])
     debug_print("numProcesses: %i\n", numProcesses);
     debug_print("mainAddress: %i\n", mainAddress);
     debug_print("mainLocality: %i\n", mainLocality);
+    debug_print("mainPhases: %i\n", mainPhases);
     debug_print("rangeAddress: %i\n", rangeAddress);
     debug_print("locality: %i\n", locality);
+    debug_print("phases: %i\n", phases);
     debug_print("memoryAccesses: %i\n", memoryAccesses);
 
     debug_print("seen_pid: %s\n", (seen_pid ? "true" : "false"));
@@ -283,6 +325,7 @@ int main(int argc, char* argv[])
     debug_print("seen_a: %s\n", (seen_a ? "true" : "false"));
     debug_print("seen_m: %s\n", (seen_m ? "true" : "false"));
     debug_print("seen_l: %s\n", (seen_l ? "true" : "false"));
+    debug_print("seen_p: %s\n", (seen_p ? "true" : "false"));
 
 
 
@@ -299,6 +342,7 @@ int main(int argc, char* argv[])
     processes[0].start = runningStart++;
     processes[0].addressSize = mainAddress;
     processes[0].lastPage = 0;
+    processes[0].locality = mainLocality;
 
     //Generating other processes
     for(int i = 1; i < numProcesses; i++) {
@@ -312,6 +356,7 @@ int main(int argc, char* argv[])
         else if(rangeAddress == 2) processes[i].addressSize = (rand() % 15) + 5;
         else processes[i].addressSize = (rand() % 30) + 20;
         processes[i].lastPage = 0;
+        processes[i].locality = locality;
         totalRequests += processes[i].remaining;
         debug_print("memory accesses: %d\n", memoryAccesses);
     }
@@ -347,10 +392,22 @@ int main(int argc, char* argv[])
             remainingProcesses--;
             continue;
         }
+
+        double localityChangeProb;
+        if (phases == 1) {localityChangeProb = 0.1; }
+        else if (phases == 2) {localityChangeProb = 0.5; }
+        else { localityChangeProb = 0.8; }
+        bool sameLocality = rand() < (localityChangeProb * ((double)RAND_MAX + 1.0));
+        if (!sameLocality) {
+            int oldLocality = current->locality;
+            while (oldLocality == current->locality) {
+                current->locality = (rand() % 3) + 1;
+            }
+        }
         
         double samePageProb;
-        if (locality == 1) { samePageProb = 0.4; }
-        else if (locality == 2) {samePageProb = 0.7; }
+        if (current->locality == 1) { samePageProb = 0.4; }
+        else if (current->locality == 2) {samePageProb = 0.7; }
         else { samePageProb = 0.9; }
         // from http://stackoverflow.com/questions/3771551/how-to-generate-a-boolean-with-p-probability-using-c-rand-function
         bool samePage = rand() < (samePageProb * ((double)RAND_MAX + 1.0));

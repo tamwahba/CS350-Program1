@@ -4,11 +4,12 @@
 Generate list of memeory references simulating a number of running processes
 
 input parameters
-- `pid <int a m l>` main process id (process we are testing)
+- `pid <int a m l p>` main process id (process we are testing)
     - `int` process id
     - `a` int specifying address space size in pages
     - `m <1|2|3>` average number of memory references (see below)
-    - `l` <1|2|3> for locality of reference (see below)
+    - `l <1|2|3>` for locality of reference (see below)
+    - `p <1|2|3>` likelihood of locality of reference changing (see below)
 - `n` 1 to 200 number of different processes
 - `a <1|2|3>` average address space size of processes
     - `1` small (1-5 pages)
@@ -22,6 +23,10 @@ input parameters
     - `1` sparse 40% same page twice in a row
     - `2` medium 70% same page twice in a row
     - `3` highly localized 90% same page twice in a row
+- `p <1|2|3>` likely hood of a process changing phases
+    - `1` low (10% chance)
+    - `2` medium (50% chance)
+    - `3` high (80% chance)
 
 # Lab 5
 Read input from lab4 program and detect page faults when memory is full
