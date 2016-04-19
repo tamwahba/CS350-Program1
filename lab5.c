@@ -4,6 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+
+#define DEBUG 0
+#define debug_print(fmt, ...) \
+    do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
 
 typedef struct m {
     int totalFramesCount;
@@ -23,7 +28,7 @@ enum operation {
 // checks if page is in memory
 bool is_in_memory(memory *m, int pid, int pageNumber) {
     for(int i = 0; i < m->totalFramesCount; i++) {
-        if(m->frameIsEmpty[i] && pid == (m->frame[i] >> 16) && pageNumber == (m->frame[i] & 0xffff))
+        if(!m->frameIsEmpty[i] && pid == (m->frame[i] >> 16) && pageNumber == (m->frame[i] & 0xffff))
             return true;
     }
     return false;
@@ -45,19 +50,21 @@ void remove_frames_for_process(memory* m, int pid) {
 
 void remove_page_from_memory(memory *m, int pid, int pageNumber) {
     if(!is_in_memory(m, pid, pageNumber)) fprintf(stderr, "page to be removed not in memory\n");
-    unsigned long val = ((val | pid) << 16) | pageNumber;
+    unsigned long val = 0;
+    val = (val | pid) << 16;
+    val = val | pageNumber;
     for(int i = 0; i < m->totalFramesCount; i++) {
         if(!m->frameIsEmpty[i] && m->frame[i] == val) {
             m->frameIsEmpty[i] = true;
             m->freeFramesCount++;
+            if(is_in_memory(m, pid, pageNumber)) printf("Error removing page from memory\n");
             return;
         }
     }
-}
-        
+}        
 
-
-void add_page_to_memory(memory* m, int pid, int page) {
+//Returns the page's index in memory
+int add_page_to_memory(memory* m, int pid, int page) {
 
     for (size_t frame = 0; frame < m->totalFramesCount; ++frame)
     {
@@ -86,9 +93,10 @@ void add_page_to_memory(memory* m, int pid, int page) {
             m->frameIsEmpty[frame] = false;
 
             m->freeFramesCount--;
-            return;
+            return frame;
         }
     }
+    return 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -149,6 +157,10 @@ int main(int argc, char* argv[]) {
     int pid;
     int pageNumber;
     int addressSpaceSize;
+    
+    int LRUCounter[memSize];
+    memset(LRUCounter, 0, sizeof(LRUCounter));
+    int opNum = 0;
 
     ///START <PID> <ADDRESSSPACESIZE>
     ///TERMINATE <PID>
@@ -201,16 +213,36 @@ int main(int argc, char* argv[]) {
 
         switch(op) {
             case START:
-                //create page table
                 break;
 
             case REFERENCE:
                 if(!is_in_memory(&m, pid, pageNumber)) {
                     if(has_free_memory(m)) {
-                        add_page_to_memory(&m, pid, pageNumber);
+                        int index = add_page_to_memory(&m, pid, pageNumber);
+                        LRUCounter[index] = opNum;
                     } else { 
                         if(pid == process) processPageFaultCount++;
                         totalPageFaultCount++;
+                        
+                        int victimNum = 0;
+                        int victimPri = INT_MAX;
+                        for(int i = 0; i < memSize; i++) {
+                            debug_print("frame %d: %8lX %d\n", i, m.frame[i], LRUCounter[i]);
+                            if(LRUCounter[i] < victimPri) {
+                                victimNum = i;
+                                victimPri = LRUCounter[i];
+                            }
+                        }
+                        unsigned int victimPage = m.frame[victimNum] & 0xffff;
+                        unsigned int victimPid = m.frame[victimNum] >> 16;
+                        debug_print("removing pid: %d page: %d\n", victimPid, victimPage);
+                        remove_page_from_memory(&m, victimPid, victimPage);
+                        add_page_to_memory(&m, pid, pageNumber);
+                        if(is_in_memory(&m, pid, pageNumber))
+                            debug_print("adding pid: %d page: %d\n", pid, pageNumber);
+                        for(int i = 0; i < memSize; i++)
+                            debug_print("frame %d: %8lX %d\n", i, m.frame[i], LRUCounter[i]);
+                        LRUCounter[victimNum] = opNum;                    
                     }
                 }
                 if(pid == process) processReferences++;
@@ -221,6 +253,7 @@ int main(int argc, char* argv[]) {
                 remove_frames_for_process(&m, pid);
                 break;
         }
+        opNum++;
     }
 
     free(m.frame);

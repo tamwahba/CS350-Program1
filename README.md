@@ -36,7 +36,7 @@ input parameters
 - `pid <int>` processes id to focus on for testing for testing (we are testing this process relative to all other processes in input)
 - `s <int>` memory size in pages
 
-Output overall page fault rate for provided process and overall page fault rate
+Output overall page fault rate for provided process and overall page fault rate using a global, counter-based LRU algorithm
 
 # Program 1
 Implementing the page replacement mechanisms
