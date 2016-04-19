@@ -21,9 +21,9 @@ enum operation {
 };
 
 // checks if page is in memory
-bool is_in_memory(memory m, int pid, int pageNumber) {
-    for(int i = 0; i < m.totalFramesCount; i++) {
-        if(pid == (m.frame[i] >> 16) && pageNumber == (m.frame[i] & 0xffff))
+bool is_in_memory(memory *m, int pid, int pageNumber) {
+    for(int i = 0; i < m->totalFramesCount; i++) {
+        if(m->frameIsEmpty[i] && pid == (m->frame[i] >> 16) && pageNumber == (m->frame[i] & 0xffff))
             return true;
     }
     return false;
@@ -42,6 +42,19 @@ void remove_frames_for_process(memory* m, int pid) {
         }
     }
 }
+
+void remove_page_from_memory(memory *m, int pid, int pageNumber) {
+    if(!is_in_memory(m, pid, pageNumber)) fprintf(stderr, "page to be removed not in memory\n");
+    unsigned long val = ((val | pid) << 16) | pageNumber;
+    for(int i = 0; i < m->totalFramesCount; i++) {
+        if(!m->frameIsEmpty[i] && m->frame[i] == val) {
+            m->frameIsEmpty[i] = true;
+            m->freeFramesCount++;
+            return;
+        }
+    }
+}
+        
 
 
 void add_page_to_memory(memory* m, int pid, int page) {
@@ -192,7 +205,7 @@ int main(int argc, char* argv[]) {
                 break;
 
             case REFERENCE:
-                if(!is_in_memory(m, pid, pageNumber)) {
+                if(!is_in_memory(&m, pid, pageNumber)) {
                     if(has_free_memory(m)) {
                         add_page_to_memory(&m, pid, pageNumber);
                     } else { 
