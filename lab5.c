@@ -171,6 +171,11 @@ int main(int argc, char* argv[]) {
         LRUCounter = GLRUCounter;
         memset(LRUCounter, 0, sizeof(*LRUCounter));
     }
+    else {
+        //int LLRUCounter
+        //LRUCounter = GLRUCounter
+        //memset...
+    }
     int opNum = 0;
 
     ///START <PID> <ADDRESSSPACESIZE>
@@ -231,6 +236,7 @@ int main(int argc, char* argv[]) {
                     if(has_free_memory(m)) {
                         int index = add_page_to_memory(&m, pid, pageNumber);
                         if(!pageReplaceType) LRUCounter[index] = opNum;
+                        //else Update counter
                     } else { 
                         if(pid == process) processPageFaultCount++;
                         totalPageFaultCount++;
@@ -255,6 +261,13 @@ int main(int argc, char* argv[]) {
                             for(int i = 0; i < memSize; i++)
                                 debug_print("frame %d: %8lX %d\n", i, m.frame[i], LRUCounter[i]);
                             LRUCounter[victimNum] = opNum;
+                        }
+                        else {
+
+
+                            //Local replacement policy code
+
+
                         }
                     }
                 }
