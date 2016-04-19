@@ -102,6 +102,7 @@ int add_page_to_memory(memory* m, int pid, int page) {
 int main(int argc, char* argv[]) {
     int process;
     int memSize;
+    int pageReplaceType = 0;
     int totalReferences = 0;
     int totalPageFaultCount = 0;
     int processReferences = 0;
@@ -109,7 +110,7 @@ int main(int argc, char* argv[]) {
 
     char opt;
     // read parameters
-    while ((opt = getopt(argc, argv, "p:s:")) != -1) {
+    while ((opt = getopt(argc, argv, "p:s:r:")) != -1) {
         switch(opt) {
             case 'p':
                 if (!sscanf(optarg, "%i", &process)) {
@@ -120,6 +121,12 @@ int main(int argc, char* argv[]) {
             case 's':
                 if (!sscanf(optarg, "%i", &memSize)) {
                     fprintf(stderr, "Invalid memory size option.\n");
+                    exit(1);
+                }
+                break;
+            case 'r':
+                if(!sscanf(optarg, "%i", &pageReplaceType)) {
+                    fprintf(stderr, "Invalid page replacement policy option.\n");
                     exit(1);
                 }
                 break;
@@ -136,7 +143,7 @@ int main(int argc, char* argv[]) {
                 break;
         }
     }
-    if (optind != 5) {
+    if (optind != 7) {
         fprintf(stderr, "Missing required arguments.\n");
         exit(1);
     }
@@ -158,8 +165,12 @@ int main(int argc, char* argv[]) {
     int pageNumber;
     int addressSpaceSize;
     
-    int LRUCounter[memSize];
-    memset(LRUCounter, 0, sizeof(LRUCounter));
+    int *LRUCounter;
+    if(!pageReplaceType) {
+        int GLRUCounter[memSize];
+        LRUCounter = GLRUCounter;
+        memset(LRUCounter, 0, sizeof(*LRUCounter));
+    }
     int opNum = 0;
 
     ///START <PID> <ADDRESSSPACESIZE>
@@ -219,30 +230,32 @@ int main(int argc, char* argv[]) {
                 if(!is_in_memory(&m, pid, pageNumber)) {
                     if(has_free_memory(m)) {
                         int index = add_page_to_memory(&m, pid, pageNumber);
-                        LRUCounter[index] = opNum;
+                        if(!pageReplaceType) LRUCounter[index] = opNum;
                     } else { 
                         if(pid == process) processPageFaultCount++;
                         totalPageFaultCount++;
                         
-                        int victimNum = 0;
-                        int victimPri = INT_MAX;
-                        for(int i = 0; i < memSize; i++) {
-                            debug_print("frame %d: %8lX %d\n", i, m.frame[i], LRUCounter[i]);
-                            if(LRUCounter[i] < victimPri) {
-                                victimNum = i;
-                                victimPri = LRUCounter[i];
+                        if(!pageReplaceType) {
+                            int victimNum = 0;
+                            int victimPri = INT_MAX;
+                            for(int i = 0; i < memSize; i++) {
+                                debug_print("frame %d: %8lX %d\n", i, m.frame[i], LRUCounter[i]);
+                                if(LRUCounter[i] < victimPri) {
+                                    victimNum = i;
+                                    victimPri = LRUCounter[i];
+                                }
                             }
+                            unsigned int victimPage = m.frame[victimNum] & 0xffff;
+                            unsigned int victimPid = m.frame[victimNum] >> 16;
+                            debug_print("removing pid: %d page: %d\n", victimPid, victimPage);
+                            remove_page_from_memory(&m, victimPid, victimPage);
+                            add_page_to_memory(&m, pid, pageNumber);
+                            if(is_in_memory(&m, pid, pageNumber))
+                                debug_print("adding pid: %d page: %d\n", pid, pageNumber);
+                            for(int i = 0; i < memSize; i++)
+                                debug_print("frame %d: %8lX %d\n", i, m.frame[i], LRUCounter[i]);
+                            LRUCounter[victimNum] = opNum;
                         }
-                        unsigned int victimPage = m.frame[victimNum] & 0xffff;
-                        unsigned int victimPid = m.frame[victimNum] >> 16;
-                        debug_print("removing pid: %d page: %d\n", victimPid, victimPage);
-                        remove_page_from_memory(&m, victimPid, victimPage);
-                        add_page_to_memory(&m, pid, pageNumber);
-                        if(is_in_memory(&m, pid, pageNumber))
-                            debug_print("adding pid: %d page: %d\n", pid, pageNumber);
-                        for(int i = 0; i < memSize; i++)
-                            debug_print("frame %d: %8lX %d\n", i, m.frame[i], LRUCounter[i]);
-                        LRUCounter[victimNum] = opNum;                    
                     }
                 }
                 if(pid == process) processReferences++;
