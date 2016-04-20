@@ -5,7 +5,7 @@
 #include <string.h>
 
 //from https://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
-#define DEBUG 0 
+#define DEBUG 1 
 #define debug_print(fmt, ...) \
     do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
 
@@ -368,6 +368,8 @@ int main(int argc, char* argv[])
     // counter reaches 0.
     int requests = 0;
     int remainingProcesses = numProcesses;
+    int opNum = 0;
+    int currentIdx = rand() % remainingProcesses;
     while (remainingProcesses > 0) {
         for (int i = 0; i < remainingProcesses; i++) {
             if (!processes[i].started && processes[i].start == requests) {
@@ -378,7 +380,8 @@ int main(int argc, char* argv[])
             }
         }
         
-        int currentIdx = rand() % remainingProcesses;
+        if(opNum++ % 100 == 0)
+            currentIdx = rand() % remainingProcesses;
         process* current = &(processes[currentIdx]);
         if (current->start > requests) {
             continue;
@@ -390,6 +393,7 @@ int main(int argc, char* argv[])
                 processes[i] = processes[i + 1];
             }
             remainingProcesses--;
+            //currentIdx = rand() % remainingProcesses;
             continue;
         }
 
