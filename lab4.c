@@ -5,7 +5,7 @@
 #include <string.h>
 
 //from https://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
-#define DEBUG 1 
+#define DEBUG 0 
 #define debug_print(fmt, ...) \
     do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
 
