@@ -5,7 +5,7 @@
 #include <string.h>
 
 //from https://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
-#define DEBUG 0 
+#define DEBUG 1 
 #define debug_print(fmt, ...) \
     do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
 
@@ -25,7 +25,7 @@ void print_usage(FILE* out)
 
 
     fprintf(out, "Usage:\n\n");
-    fprintf(out, "program1 -h -pid <PID A M L> -n <N> -a <1|2|3> -m <1|2|3> -l <1|2|3> -p <1|2|3>\n");
+    fprintf(out, "program1 -h -pid <PID A M L P> -n <N> -a <1|2|3> -m <1|2|3> -l <1|2|3> -p <1|2|3>\n");
     fprintf(out, "\n");
     fprintf(out, "-h      Print this help\n");
     fprintf(out, "\n");
@@ -54,6 +54,7 @@ void print_usage(FILE* out)
     fprintf(out, " 3     Highly Localized\n");
     fprintf(out, "\n");
     fprintf(out, "-l      Likely hood of a process changing phases\n");
+    fprintf(out, " 0     Zero (0%% chance)\n");
     fprintf(out, " 1     Low (10%% chance)\n");
     fprintf(out, " 2     Medium (50%% chance)\n");
     fprintf(out, " 3     Highly (80%% chance)\n");
@@ -133,9 +134,9 @@ int main(int argc, char* argv[])
                 exit(-1);
             }
             
-            if (mainPhases < 1 || mainPhases > 3)
+            if (mainPhases < 0 || mainPhases > 3)
             {
-                fprintf(stderr, "Error: invalid value for -pid, p=%i, should be in range [1,3]\n\n", mainPhases);
+                fprintf(stderr, "Error: invalid value for -pid, p=%i, should be in range [0,3]\n\n", mainPhases);
                 print_usage(stderr);
                 exit(-1);
             }
@@ -255,9 +256,9 @@ int main(int argc, char* argv[])
 
             phases = atoi(argv[arg_index + 1]);
 
-            if (phases < 1 || phases > 3)
+            if (phases < 0 || phases > 3)
             {
-                fprintf(stderr, "Error: invalid value for -p (%i), should be in range [1,3]\n\n", locality);
+                fprintf(stderr, "Error: invalid value for -p (%i), should be in range [0,3]\n\n", locality);
 
                 print_usage(stderr);
                 exit(-1);
@@ -398,9 +399,10 @@ int main(int argc, char* argv[])
         }
 
         double localityChangeProb;
-        if (phases == 1) {localityChangeProb = 0.1; }
-        else if (phases == 2) {localityChangeProb = 0.5; }
-        else { localityChangeProb = 0.8; }
+        if (phases == 0) localityChangeProb = 0;
+        else if (phases == 1) {localityChangeProb = 0.001; }
+        else if (phases == 2) {localityChangeProb = 0.01; }
+        else { localityChangeProb = 0.1; }
         bool sameLocality = rand() < (localityChangeProb * ((double)RAND_MAX + 1.0));
         if (!sameLocality) {
             int oldLocality = current->locality;
@@ -412,7 +414,7 @@ int main(int argc, char* argv[])
         double samePageProb;
         if (current->locality == 1) { samePageProb = 0.4; }
         else if (current->locality == 2) {samePageProb = 0.7; }
-        else { samePageProb = 0.9; }
+        else { samePageProb = 0.99; }
         // from http://stackoverflow.com/questions/3771551/how-to-generate-a-boolean-with-p-probability-using-c-rand-function
         bool samePage = rand() < (samePageProb * ((double)RAND_MAX + 1.0));
         
