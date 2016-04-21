@@ -17,6 +17,7 @@ typedef struct proc {
     int lastPage;
     int locality;
     bool started;
+    int phase;
 } process;
 
 
@@ -25,7 +26,7 @@ void print_usage(FILE* out)
 
 
     fprintf(out, "Usage:\n\n");
-    fprintf(out, "program1 -h -pid <PID A M L> -n <N> -a <1|2|3> -m <1|2|3> -l <1|2|3> -p <1|2|3>\n");
+    fprintf(out, "program1 -h -pid <PID A M L P> -n <N> -a <1|2|3> -m <1|2|3> -l <1|2|3> -p <1|2|3>\n");
     fprintf(out, "\n");
     fprintf(out, "-h      Print this help\n");
     fprintf(out, "\n");
@@ -54,6 +55,7 @@ void print_usage(FILE* out)
     fprintf(out, " 3     Highly Localized\n");
     fprintf(out, "\n");
     fprintf(out, "-l      Likely hood of a process changing phases\n");
+    fprintf(out, " 0     Zero (0%% chance)\n");
     fprintf(out, " 1     Low (10%% chance)\n");
     fprintf(out, " 2     Medium (50%% chance)\n");
     fprintf(out, " 3     Highly (80%% chance)\n");
@@ -133,9 +135,9 @@ int main(int argc, char* argv[])
                 exit(-1);
             }
             
-            if (mainPhases < 1 || mainPhases > 3)
+            if (mainPhases < 0 || mainPhases > 3)
             {
-                fprintf(stderr, "Error: invalid value for -pid, p=%i, should be in range [1,3]\n\n", mainPhases);
+                fprintf(stderr, "Error: invalid value for -pid, p=%i, should be in range [0,3]\n\n", mainPhases);
                 print_usage(stderr);
                 exit(-1);
             }
@@ -255,9 +257,9 @@ int main(int argc, char* argv[])
 
             phases = atoi(argv[arg_index + 1]);
 
-            if (phases < 1 || phases > 3)
+            if (phases < 0 || phases > 3)
             {
-                fprintf(stderr, "Error: invalid value for -p (%i), should be in range [1,3]\n\n", locality);
+                fprintf(stderr, "Error: invalid value for -p (%i), should be in range [0,3]\n\n", locality);
 
                 print_usage(stderr);
                 exit(-1);
@@ -343,6 +345,7 @@ int main(int argc, char* argv[])
     processes[0].addressSize = mainAddress;
     processes[0].lastPage = 0;
     processes[0].locality = mainLocality;
+    processes[0].phase = mainPhases;
 
     //Generating other processes
     for(int i = 1; i < numProcesses; i++) {
@@ -357,6 +360,7 @@ int main(int argc, char* argv[])
         else processes[i].addressSize = (rand() % 30) + 20;
         processes[i].lastPage = 0;
         processes[i].locality = locality;
+        processes[i].phase = phases;
         totalRequests += processes[i].remaining;
         debug_print("memory accesses: %d\n", memoryAccesses);
     }
@@ -398,10 +402,11 @@ int main(int argc, char* argv[])
         }
 
         double localityChangeProb;
-        if (phases == 1) {localityChangeProb = 0.1; }
-        else if (phases == 2) {localityChangeProb = 0.5; }
-        else { localityChangeProb = 0.8; }
-        bool sameLocality = rand() < (localityChangeProb * ((double)RAND_MAX + 1.0));
+        if (current->phase == 0) localityChangeProb = 0;
+        else if (current->phase == 1) {localityChangeProb = 0.001; }
+        else if (current->phase == 2) {localityChangeProb = 0.01; }
+        else { localityChangeProb = 0.1; }
+        bool sameLocality = rand() >= (localityChangeProb * ((double)RAND_MAX + 1.0));
         if (!sameLocality) {
             int oldLocality = current->locality;
             while (oldLocality == current->locality) {
@@ -412,15 +417,20 @@ int main(int argc, char* argv[])
         double samePageProb;
         if (current->locality == 1) { samePageProb = 0.4; }
         else if (current->locality == 2) {samePageProb = 0.7; }
-        else { samePageProb = 0.9; }
+        else { samePageProb = 0.95; }
         // from http://stackoverflow.com/questions/3771551/how-to-generate-a-boolean-with-p-probability-using-c-rand-function
+        debug_print("samePageProb: %f\n", samePageProb);
         bool samePage = rand() < (samePageProb * ((double)RAND_MAX + 1.0));
         
         int page = rand() % current->addressSize;
         while (page == current->lastPage && current->addressSize > 1) { 
             page = rand() % current->addressSize; 
         }
-        if(samePage) page = current->lastPage; 
+        if(samePage){ 
+            page = current->lastPage; 
+            debug_print("Choosing same page %d\n", page);
+        }
+        else debug_print("Choosing new page %d\n", page);
         printf("REFERENCE %i %i\n", 
                 current->pid, page);
         current->lastPage = page;

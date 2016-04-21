@@ -24,7 +24,7 @@ input parameters
     - `2` medium 70% same page twice in a row
     - `3` highly localized 90% same page twice in a row
 - `p <0|1|2|3>` likely hood of a process changing phases
-    - `0` none (0% chance)
+    - `0` zero (0% chance)
     - `1` low (10% chance)
     - `2` medium (50% chance)
     - `3` high (80% chance)
