@@ -205,8 +205,7 @@ int main(int argc, char* argv[]) {
     enum operation op;
     int pid;
     int pageNumber;
-    int addressSpaceSize;
-    
+        
     int *LRUCounter;
     if(!pageReplaceType) {
         LRUCounter = malloc(sizeof(int)*memSize);
@@ -241,8 +240,7 @@ int main(int argc, char* argv[]) {
         {
             op = START;
             pid = arg1;
-            addressSpaceSize = arg2;
-
+            
             ///Here START command 
             /// just debugs
             // fprintf(stdout, "START, pid: %d, addressSpaceSize: %d\n", pid, addressSpaceSize);
