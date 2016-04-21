@@ -25,6 +25,48 @@ enum operation {
     TERMINATE
 };
 
+
+int find_victim(memory* m, int* LRUCounter, int command_pid, bool local_replacement, bool allow_global_replacement){
+
+    ///start with invalid victimNum
+    int victimNum = -1;
+    int victimPri = INT_MAX;
+
+    
+    ///find the piece of memory that is the oldest.
+    ///for each piece of memory,
+    for(int i = 0; i < m->totalFramesCount; i++) {
+        debug_print("frame %d: %8lX %d\n", i, m->frame[i], LRUCounter[i]);
+
+        ///get the owning PID of this memory
+        unsigned int memoryPid = m->frame[i] >> 16;
+
+        ///if local-only-replacement, then only accept LRUs with the same PID of the current command
+        if (local_replacement && memoryPid != command_pid)
+            continue;
+
+        ///if the last opNum of this memory is older,
+        if(LRUCounter[i] < victimPri) {
+            ///then this is going to be our chosen memory,
+            victimNum = i;
+            victimPri = LRUCounter[i];
+        }
+    }
+
+    if (victimNum < 0)
+    {
+        ///we didn't find a good victim.
+
+        if (local_replacement && allow_global_replacement)
+        {
+            ///try to find a victim from among all the processes
+            return find_victim(m, LRUCounter, command_pid, false, true);
+        }
+    }
+
+    return victimNum;
+}
+
 // checks if page is in memory
 bool is_in_memory(memory *m, int pid, int pageNumber) {
     for(int i = 0; i < m->totalFramesCount; i++) {
@@ -167,14 +209,12 @@ int main(int argc, char* argv[]) {
     
     int *LRUCounter;
     if(!pageReplaceType) {
-        int GLRUCounter[memSize];
-        LRUCounter = GLRUCounter;
+        LRUCounter = malloc(sizeof(int)*memSize);
         memset(LRUCounter, 0, sizeof(*LRUCounter));
     }
     else {
-        //int LLRUCounter
-        //LRUCounter = GLRUCounter
-        //memset...
+        LRUCounter = malloc(sizeof(int)*memSize);
+        memset(LRUCounter, 0, sizeof(*LRUCounter));
     }
     int opNum = 0;
 
@@ -183,6 +223,8 @@ int main(int argc, char* argv[]) {
 
     while (true)
     {
+        // fprintf(stderr,"m.freeFramesCount: %u, opNum: %u\n",m.freeFramesCount,opNum);
+
         char opstr[10]; // each word at most 10 characters 
         int arg1 = 0, arg2 = 0;
         int num_args = fscanf(stdin, "%9s %d %d\n", opstr, &arg1, &arg2);
@@ -235,40 +277,33 @@ int main(int argc, char* argv[]) {
                 if(!is_in_memory(&m, pid, pageNumber)) {
                     if(has_free_memory(m)) {
                         int index = add_page_to_memory(&m, pid, pageNumber);
-                        if(!pageReplaceType) LRUCounter[index] = opNum;
+                        LRUCounter[index] = opNum;
                         //else Update counter
-                    } else { 
+                    } 
+
+
+                    else { 
+
                         if(pid == process) processPageFaultCount++;
                         totalPageFaultCount++;
                         
-                        if(!pageReplaceType) {
-                            int victimNum = 0;
-                            int victimPri = INT_MAX;
-                            for(int i = 0; i < memSize; i++) {
-                                debug_print("frame %d: %8lX %d\n", i, m.frame[i], LRUCounter[i]);
-                                if(LRUCounter[i] < victimPri) {
-                                    victimNum = i;
-                                    victimPri = LRUCounter[i];
-                                }
-                            }
-                            unsigned int victimPage = m.frame[victimNum] & 0xffff;
-                            unsigned int victimPid = m.frame[victimNum] >> 16;
-                            debug_print("removing pid: %d page: %d\n", victimPid, victimPage);
-                            remove_page_from_memory(&m, victimPid, victimPage);
-                            add_page_to_memory(&m, pid, pageNumber);
-                            if(is_in_memory(&m, pid, pageNumber))
-                                debug_print("adding pid: %d page: %d\n", pid, pageNumber);
-                            for(int i = 0; i < memSize; i++)
-                                debug_print("frame %d: %8lX %d\n", i, m.frame[i], LRUCounter[i]);
-                            LRUCounter[victimNum] = opNum;
+                        int victimNum = find_victim(&m, LRUCounter, pid, /*local_replacement=*/pageReplaceType==1, /*allow_global_replacement=*/true);
+
+                        if (victimNum < 0)
+                        {
+                            fprintf(stderr, "Cannot do local replacement, process has no existing memory, aborting; pid: %u\n",pid);
+                            exit(-1);
                         }
-                        else {
-
-
-                            //Local replacement policy code
-
-
-                        }
+                        unsigned int victimPage = m.frame[victimNum] & 0xffff;
+                        unsigned int victimPid = m.frame[victimNum] >> 16;
+                        debug_print("removing pid: %d page: %d\n", victimPid, victimPage);
+                        remove_page_from_memory(&m, victimPid, victimPage);
+                        add_page_to_memory(&m, pid, pageNumber);
+                        if(is_in_memory(&m, pid, pageNumber))
+                            debug_print("adding pid: %d page: %d\n", pid, pageNumber);
+                        for(int i = 0; i < memSize; i++)
+                            debug_print("frame %d: %8lX %d\n", i, m.frame[i], LRUCounter[i]);
+                        LRUCounter[victimNum] = opNum;
                     }
                 }
                 if(pid == process) processReferences++;
