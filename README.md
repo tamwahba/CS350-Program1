@@ -84,4 +84,15 @@ Run `lab 4` with the following parameters 10 times:
 
 ## Results
 
+- Case 1:
+- Case 2:
+    - Global
+        - Total fault rate: 0.0252642
+        - Process fault rate: 0.3478414
+    - Local
+        - Total fault rate: 0.0331974
+        - Process fault rate: 0.3576342
+- Case 3:
+- Case 4: 
+
 ## Conclusion
