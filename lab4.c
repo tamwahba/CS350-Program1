@@ -420,9 +420,9 @@ int main(int argc, char* argv[])
         while (page == current->lastPage && current->addressSize > 1) { 
             page = rand() % current->addressSize; 
         }
-        
+        if(samePage) page = current->lastPage; 
         printf("REFERENCE %i %i\n", 
-                current->pid, samePage ? current->lastPage : page);
+                current->pid, page);
         current->lastPage = page;
         current->remaining--;
         requests++; 
