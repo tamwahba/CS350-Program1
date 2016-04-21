@@ -5,7 +5,7 @@
 #include <string.h>
 
 //from https://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
-#define DEBUG 1 
+#define DEBUG 0 
 #define debug_print(fmt, ...) \
     do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
 
@@ -402,11 +402,11 @@ int main(int argc, char* argv[])
         }
 
         double localityChangeProb;
-        if (current->phase == 0) localityChangeProb = 1.0;
+        if (current->phase == 0) localityChangeProb = 0;
         else if (current->phase == 1) {localityChangeProb = 0.001; }
         else if (current->phase == 2) {localityChangeProb = 0.01; }
         else { localityChangeProb = 0.1; }
-        bool sameLocality = rand() < (localityChangeProb * ((double)RAND_MAX + 1.0));
+        bool sameLocality = rand() >= (localityChangeProb * ((double)RAND_MAX + 1.0));
         if (!sameLocality) {
             int oldLocality = current->locality;
             while (oldLocality == current->locality) {
@@ -417,7 +417,7 @@ int main(int argc, char* argv[])
         double samePageProb;
         if (current->locality == 1) { samePageProb = 0.4; }
         else if (current->locality == 2) {samePageProb = 0.7; }
-        else { samePageProb = 1; }
+        else { samePageProb = 0.95; }
         // from http://stackoverflow.com/questions/3771551/how-to-generate-a-boolean-with-p-probability-using-c-rand-function
         debug_print("samePageProb: %f\n", samePageProb);
         bool samePage = rand() < (samePageProb * ((double)RAND_MAX + 1.0));
