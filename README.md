@@ -85,14 +85,32 @@ Run `lab 4` with the following parameters 10 times:
 ## Results
 
 - Case 1:
+    - Global
+        - Total fault rate: 0.021985
+        - Focus fault rate: 0.436520
+    - Local
+        - Total fault rate: 0.043325
+        - Focus fault rate: 0.584738
 - Case 2:
     - Global
-        - Total fault rate: 0.0252642
-        - Process fault rate: 0.3478414
+        - Total fault rate: 0.020869
+        - Focus fault rate: 0.350545
     - Local
-        - Total fault rate: 0.0331974
-        - Process fault rate: 0.3576342
+        - Total fault rate: 0.020155
+        - Focus fault rate: 0.420281
 - Case 3:
+    - Global
+        - Total fault rate: 0.022277
+        - Focus fault rate: 0.038552
+    - Local
+        - Total fault rate: 0.426142
+        - Focus fault rate: 0.310822
 - Case 4: 
+    - Global
+        - Total fault rate: 0.018832
+        - Focus fault rate: 0.041379
+    - Local
+        - Total fault rate: 0.045721
+        - Focus fault rate: 0.359701
 
 ## Conclusion
