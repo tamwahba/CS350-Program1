@@ -40,7 +40,7 @@ input parameters
 
 Output overall page fault rate for provided process and overall page fault rate using a global or local counter-based LRU algorithm
 
-# Program 1s
+# Program 1
 ## Abstract
 Global page replacement policy selects victim pages on page faults from all available
 pages currently in memory. Local page replacement allocates a set of frames to each
@@ -83,7 +83,6 @@ Run `lab 4` with the following parameters 10 times:
 - For each case compare main process' page fault rate for local page replacement to global page replacement 
 
 ## Results
-
 - Case 1:
     - Global
         - Total fault rate: 0.021985
@@ -114,3 +113,10 @@ Run `lab 4` with the following parameters 10 times:
         - Focus fault rate: 0.359701
 
 ## Conclusion
+In all cases, global page replacement outperforms local replacement. Only when 
+there is a program with a large adderess space does global replacement performance suffer.
+When keeping the behavior of a program constant and decreasing the number of
+surrounding processes and memory references, global overall page fault rate
+remains the same, but the focus process fault rate decreases, showing that 
+outside processes had an impact on a certain process' behavior. The impact, however,
+was minimal.
