@@ -16,6 +16,11 @@ typedef struct m {
     unsigned long* frame; // contains the id of the process and the page using that frame.
     // I make it as an array and each entry has two things ( pid and page number)
     bool* frameIsEmpty; // contains whether the frame is empty
+    unsigned int maxFrameCount;
+    unsigned int activeProcessCount;
+    unsigned int maxActiveProcessCount;
+    int* activeProcesses;
+    int* processFrameCount;
 } memory;
 
 
@@ -26,45 +31,67 @@ enum operation {
 };
 
 
-int find_victim(memory* m, int* LRUCounter, int command_pid, bool local_replacement, bool allow_global_replacement){
-
+int find_victim(memory* m, int* LRUCounter, int command_pid, bool local_replacement){
     ///start with invalid victimNum
     int victimNum = -1;
     int victimPri = INT_MAX;
 
-    
-    ///find the piece of memory that is the oldest.
-    ///for each piece of memory,
-    for(int i = 0; i < m->totalFramesCount; i++) {
-        debug_print("frame %d: %8lX %d\n", i, m->frame[i], LRUCounter[i]);
 
-        ///get the owning PID of this memory
-        unsigned int memoryPid = m->frame[i] >> 16;
+    if (local_replacement) {
+        // find process' id (id is value in activeProcesses)
+        int currentProcessIdx = -1;
+        for (int i = 0; i < m->activeProcessCount; i++) {
+            if (m->activeProcesses[i] == command_pid) {
+                currentProcessIdx = i;
+                break;
+            }
+        }
 
-        ///if local-only-replacement, then only accept LRUs with the same PID of the current command
-        if (local_replacement && memoryPid != command_pid)
-            continue;
+        unsigned int victimPID = 0;
+        // process has less than max frames or no frames
+        if (m->processFrameCount[currentProcessIdx] < m->maxFrameCount
+                || m->processFrameCount[currentProcessIdx] == 0) {
+            // find process with most frames in memory
+            int highestFrameCount = 0;
+            int highestFrameIdx = -1;
+            for (int i = 0; i < m->activeProcessCount; i++) {
+                if (m->processFrameCount[i] > highestFrameCount) {
+                    highestFrameCount = m->processFrameCount[i];
+                    highestFrameIdx = i;
+                }
+            }
 
-        ///if the last opNum of this memory is older,
-        if(LRUCounter[i] < victimPri) {
-            ///then this is going to be our chosen memory,
-            victimNum = i;
-            victimPri = LRUCounter[i];
+            victimPID = m->activeProcesses[highestFrameIdx];
+        } else {
+            // select least recently used frame from process pool
+            victimPID = m->activeProcesses[currentProcessIdx];
+        }
+
+        for (int i = 0; i < m->totalFramesCount; i++) {
+            if ((m->frame[i] >> 16) == victimPID
+                    && LRUCounter[i] < victimPri) {
+                victimNum = i;
+                victimPri = LRUCounter[i];
+            }
+        }
+    } else {
+        // find the piece of memory that is the oldest.
+        for (int i = 0; i < m->totalFramesCount; i++) {
+            // if the last opNum of this memory is older,
+            if (LRUCounter[i] < victimPri) {
+                // then this is going to be our chosen memory,
+                victimNum = i;
+                victimPri = LRUCounter[i];
+            }
         }
     }
-
-    if (victimNum < 0)
-    {
-        ///we didn't find a good victim.
-
-        if (local_replacement && allow_global_replacement)
-        {
-            ///try to find a victim from among all the processes
-            return find_victim(m, LRUCounter, command_pid, false, true);
-        }
-    }
-
     return victimNum;
+}
+
+void remove_idx(int* array, int idx, int size) {
+    for (int i = idx; i < size - 1; i++) {
+        array[i] = array[i+1];
+    }
 }
 
 // checks if page is in memory
@@ -88,6 +115,17 @@ void remove_frames_for_process(memory* m, int pid) {
             m->freeFramesCount++;
         }
     }
+    
+    for (int i = 0; i < m->activeProcessCount; i++) {
+        if (m->activeProcesses[i] == pid) {
+            remove_idx(m->activeProcesses, i, m->activeProcessCount);
+            remove_idx(m->processFrameCount, i, m->activeProcessCount);
+            m->activeProcesses[m->activeProcessCount] = -1;
+            m->processFrameCount[m->activeProcessCount] = 0;
+            m->activeProcessCount--;
+            break;
+        }
+    }
 }
 
 void remove_page_from_memory(memory *m, int pid, int pageNumber) {
@@ -100,10 +138,15 @@ void remove_page_from_memory(memory *m, int pid, int pageNumber) {
             m->frameIsEmpty[i] = true;
             m->freeFramesCount++;
             if(is_in_memory(m, pid, pageNumber)) printf("Error removing page from memory\n");
+            for (int j = 0; j < m->activeProcessCount; j++) {
+                if (m->activeProcesses[j] == pid) {
+                    m->processFrameCount[j]--;
+                }
+            }
             return;
         }
     }
-}        
+}
 
 //Returns the page's index in memory
 int add_page_to_memory(memory* m, int pid, int page) {
@@ -135,6 +178,12 @@ int add_page_to_memory(memory* m, int pid, int page) {
             m->frameIsEmpty[frame] = false;
 
             m->freeFramesCount--;
+
+            for (int i = 0; i < m->activeProcessCount; i++) {
+                if (m->activeProcesses[i] == pid) {
+                    m->processFrameCount[i]++;
+                }
+            }
             return frame;
         }
     }
@@ -167,7 +216,7 @@ int main(int argc, char* argv[]) {
                 }
                 break;
             case 'r':
-                if(!sscanf(optarg, "%i", &pageReplaceType)) {
+                if (!sscanf(optarg, "%i", &pageReplaceType)) {
                     fprintf(stderr, "Invalid page replacement policy option.\n");
                     exit(1);
                 }
@@ -197,8 +246,14 @@ int main(int argc, char* argv[]) {
     m.freeFramesCount = memSize;
     m.frame = malloc(sizeof(unsigned long) * memSize);
     m.frameIsEmpty = malloc(sizeof(bool) * memSize);
+    m.activeProcessCount = 0;
+    m.maxActiveProcessCount = memSize;
+    m.activeProcesses = malloc(sizeof(int) * memSize);
+    m.processFrameCount = malloc(sizeof(unsigned) * memSize);
     for (int i = 0; i < memSize; i++) {
         m.frameIsEmpty[i] = true;
+        m.activeProcesses[i] = -1;
+        m.processFrameCount[i] = 0;
     }
 
     // read input from stdin
@@ -207,14 +262,9 @@ int main(int argc, char* argv[]) {
     int pageNumber;
         
     int *LRUCounter;
-    if(!pageReplaceType) {
-        LRUCounter = malloc(sizeof(int)*memSize);
-        memset(LRUCounter, 0, sizeof(*LRUCounter));
-    }
-    else {
-        LRUCounter = malloc(sizeof(int)*memSize);
-        memset(LRUCounter, 0, sizeof(*LRUCounter));
-    }
+    LRUCounter = malloc(sizeof(int)*memSize);
+    memset(LRUCounter, 0, sizeof(*LRUCounter));
+    
     int opNum = 0;
 
     ///START <PID> <ADDRESSSPACESIZE>
@@ -269,6 +319,17 @@ int main(int argc, char* argv[]) {
 
         switch(op) {
             case START:
+                if (m.maxActiveProcessCount == m.activeProcessCount) {
+                    m.maxActiveProcessCount *= 2;
+                    m.activeProcesses = realloc(m.activeProcesses, m.maxActiveProcessCount * sizeof(int));
+                    m.processFrameCount = realloc(m.processFrameCount, m.maxActiveProcessCount * sizeof(unsigned));
+                }
+                m.activeProcesses[m.activeProcessCount] = pid;
+                m.processFrameCount[m.activeProcessCount] = 0;
+                m.activeProcessCount++;
+                m.maxFrameCount = m.totalFramesCount / m.activeProcessCount;
+                debug_print("start %i\n", pid);
+                debug_print("max frame count: %i\n", m.maxFrameCount);
                 break;
 
             case REFERENCE:
@@ -277,15 +338,11 @@ int main(int argc, char* argv[]) {
                         int index = add_page_to_memory(&m, pid, pageNumber);
                         LRUCounter[index] = opNum;
                         //else Update counter
-                    } 
-
-
-                    else { 
-
+                    } else { 
                         if(pid == process) processPageFaultCount++;
                         totalPageFaultCount++;
                         
-                        int victimNum = find_victim(&m, LRUCounter, pid, /*local_replacement=*/pageReplaceType==1, /*allow_global_replacement=*/true);
+                        int victimNum = find_victim(&m, LRUCounter, pid, /*local_replacement=*/pageReplaceType==1);
 
                         if (victimNum < 0)
                         {
@@ -310,6 +367,7 @@ int main(int argc, char* argv[]) {
 
             case TERMINATE:
                 remove_frames_for_process(&m, pid);
+                debug_print("removed %i\n", pid);
                 break;
         }
         opNum++;
@@ -317,6 +375,8 @@ int main(int argc, char* argv[]) {
 
     free(m.frame);
     free(m.frameIsEmpty);
+    free(m.activeProcesses);
+    free(m.processFrameCount);
 
     fprintf(stdout, "Total page faults: %i.\nProcess page faults: %i.\n",
             totalPageFaultCount, processPageFaultCount);
